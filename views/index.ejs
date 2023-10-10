@@ -3,47 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Server Monitoring</title>
-    <script>
-        function updateStats() {
-            fetch('/stats')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('cpuUsage').innerText = data.cpuUsage.toFixed(2) + ' %';
-                    document.getElementById('usedmem').innerText = data.usedmem.toFixed(2) + ' MB';
-                    document.getElementById('totalmem').innerText = data.totalmem.toFixed(2) + ' MB';
-                    document.getElementById('bytesRead').innerText = data.diskIO.bytesRead;
-                    document.getElementById('bytesWritten').innerText = data.diskIO.bytesWritten;
-
-                    const portsList = document.getElementById('openPorts');
-                    portsList.innerHTML = '';
-                    data.openPorts.forEach(port => {
-                        const li = document.createElement('li');
-                        li.innerText = `Port: ${port.local.port}, Protocol: ${port.protocol}, Address: ${port.local.address}`;
-                        portsList.appendChild(li);
-                    });
-                });
+    <title>System Information</title>
+    <style>
+        table, th, td {
+            border: 1px solid black;
+            border-collapse: collapse;
         }
-
-        setInterval(updateStats, 1000);
-    </script>
+        th, td {
+            padding: 8px;
+        }
+    </style>
 </head>
-<body onload="updateStats()">
-    <h1>Server Monitoring</h1>
+<body>
+    <h1>System Information</h1>
 
-    <h2>CPU Usage</h2>
-    <p id="cpuUsage"></p>
+    <!-- System -->
+    <h2>System</h2>
+    <ul>
+        <li>Hostname: <%= systemInfo.hostname %></li>
+        <li>OS: <%= systemInfo.os %></li>
+        <li>Kernel Version: <%= systemInfo.kernelVersion %></li>
+        <li>Uptime: <%= systemInfo.uptime %> seconds</li>
+    </ul>
 
-    <h2>RAM Usage</h2>
-    <p>Used: <span id="usedmem"></span></p>
-    <p>Total: <span id="totalmem"></span></p>
+    <!-- Load Average -->
+    <h2>Load Average</h2>
+    <p style="color: <%= loadColor %>;"><%= loadAvg.toFixed(2) %> %</p>
 
-    <h2>Disk I/O</h2>
-    <p>Bytes Read: <span id="bytesRead"></span></p>
-    <p>Bytes Written: <span id="bytesWritten"></span></p>
+    <!-- CPU -->
+    <h2>CPU</h2>
+    <ul>
+        <li>Model: <%= cpu.model %></li>
+        <li>Number of Cores: <%= cpu.cores %></li>
+        <li>CPU Speed: <%= cpu.speed %> MHz</li>
+        <li>Temperature: <%= cpu.temperature %>°C</li>
+    </ul>
 
-    <h2>Open Ports</h2>
-    <ul id="openPorts"></ul>
+    <!-- Network Usage -->
+    <h2>Network Usage</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Interface Name</th>
+                <th>IP</th>
+                <th>Receive Data (MB)</th>
+                <th>Transmit Data (MB)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% networkUsage.forEach(net => { %>
+            <tr>
+                <td><%= net.name %></td>
+                <td><%= net.ip %></td>
+                <td><%= net.receiveData %></td>
+                <td><%= net.transmitData %></td>
+            </tr>
+            <% }); %>
+        </tbody>
+    </table>
+
+    <!-- Disk Usage -->
+    <h2>Disk Usage</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Filesystem</th>
+                <th>Mount</th>
+                <th>% of Use</th>
+                <th>Free</th>
+                <th>Used</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% diskUsage.forEach(disk => { %>
+            <tr>
+                <td><%= disk.filesystem %></td>
+                <td><%= disk.mount %></td>
+                <td><%= disk.usePercentage %></td>
+                <td><%= disk.free %></td>
+                <td><%= disk.used %></td>
+                <td><%= disk.total %></td>
+            </tr>
+            <% }); %>
+        </tbody>
+    </table>
+
+    <!-- Memory Information -->
+    <h2>Memory Information</h2>
+    <ul>
+        <li>% Used: <%= memInfo.usedPercentage.toFixed(2) %> %</li>
+        <li>Used: <%= memInfo.used.toFixed(2) %> MB</li>
+        <li>Free: <%= memInfo.free.toFixed(2) %> MB</li>
+        <li>Total: <%= memInfo.total.toFixed(2) %> MB</li>
+    </ul>
 </body>
 </html>
-
