@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Monitoring</title>
+    <script>
+        function updateStats() {
+            fetch('/stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('cpuUsage').innerText = data.cpuUsage.toFixed(2) + ' %';
+                    document.getElementById('usedmem').innerText = data.usedmem.toFixed(2) + ' MB';
+                    document.getElementById('totalmem').innerText = data.totalmem.toFixed(2) + ' MB';
+                    document.getElementById('bytesRead').innerText = data.diskIO.bytesRead;
+                    document.getElementById('bytesWritten').innerText = data.diskIO.bytesWritten;
+
+                    const portsList = document.getElementById('openPorts');
+                    portsList.innerHTML = '';
+                    data.openPorts.forEach(port => {
+                        const li = document.createElement('li');
+                        li.innerText = `Port: ${port.local.port}, Protocol: ${port.protocol}, Address: ${port.local.address}`;
+                        portsList.appendChild(li);
+                    });
+                });
+        }
+
+        setInterval(updateStats, 1000);
+    </script>
+</head>
+<body onload="updateStats()">
+    <h1>Server Monitoring</h1>
+
+    <h2>CPU Usage</h2>
+    <p id="cpuUsage"></p>
+
+    <h2>RAM Usage</h2>
+    <p>Used: <span id="usedmem"></span></p>
+    <p>Total: <span id="totalmem"></span></p>
+
+    <h2>Disk I/O</h2>
+    <p>Bytes Read: <span id="bytesRead"></span></p>
+    <p>Bytes Written: <span id="bytesWritten"></span></p>
+
+    <h2>Open Ports</h2>
+    <ul id="openPorts"></ul>
+</body>
+</html>
+
