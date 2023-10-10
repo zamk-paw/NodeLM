@@ -3,99 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Information</title>
-    <style>
-        table, th, td {
-            border: 1px solid black;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 8px;
-        }
-    </style>
+    <title>Server Monitoring</title>
 </head>
 <body>
-    <h1>System Information</h1>
 
-    <!-- System -->
-    <h2>System</h2>
-    <ul>
-        <li>Hostname: <%= systemInfo.hostname %></li>
-        <li>OS: <%= systemInfo.os %></li>
-        <li>Kernel Version: <%= systemInfo.kernelVersion %></li>
-        <li>Uptime: <%= systemInfo.uptime %> seconds</li>
-    </ul>
+<h2>System Information</h2>
+<ul>
+    <li>Hostname: <span id="hostname"></span></li>
+    <li>OS: <span id="os"></span></li>
+    <li>Kernel Version: <span id="kernelVersion"></span></li>
+    <li>Uptime: <span id="uptime"></span></li>
+</ul>
 
-    <!-- Load Average -->
-    <h2>Load Average</h2>
-    <p style="color: <%= loadColor %>;"><%= loadAvg.toFixed(2) %> %</p>
+<h2>Load Average</h2>
+<p style="color: <span id="loadColor"></span>Load: <span id="loadAvg"></span>%</p>
 
-    <!-- CPU -->
-    <h2>CPU</h2>
-    <ul>
-        <li>Model: <%= cpu.model %></li>
-        <li>Number of Cores: <%= cpu.cores %></li>
-        <li>CPU Speed: <%= cpu.speed %> MHz</li>
-        <li>Temperature: <%= cpu.temperature %>°C</li>
-    </ul>
+<h2>CPU Information</h2>
+<ul>
+    <li>Model: <span id="cpuModel"></span></li>
+    <li>Number of Cores: <span id="cpuCores"></span></li>
+    <li>Speed: <span id="cpuSpeed"></span> MHz</li>
+</ul>
 
-    <!-- Network Usage -->
-    <h2>Network Usage</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Interface Name</th>
-                <th>IP</th>
-                <th>Receive Data (MB)</th>
-                <th>Transmit Data (MB)</th>
-            </tr>
-        </thead>
-        <tbody>
-            <% networkUsage.forEach(net => { %>
-            <tr>
-                <td><%= net.name %></td>
-                <td><%= net.ip %></td>
-                <td><%= net.receiveData %></td>
-                <td><%= net.transmitData %></td>
-            </tr>
-            <% }); %>
-        </tbody>
-    </table>
+<h2>Network Usage</h2>
+<ul id="networkUsage">
+    <!-- Network interfaces will be appended here -->
+</ul>
 
-    <!-- Disk Usage -->
-    <h2>Disk Usage</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Filesystem</th>
-                <th>Mount</th>
-                <th>% of Use</th>
-                <th>Free</th>
-                <th>Used</th>
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            <% diskUsage.forEach(disk => { %>
-            <tr>
-                <td><%= disk.filesystem %></td>
-                <td><%= disk.mount %></td>
-                <td><%= disk.usePercentage %></td>
-                <td><%= disk.free %></td>
-                <td><%= disk.used %></td>
-                <td><%= disk.total %></td>
-            </tr>
-            <% }); %>
-        </tbody>
-    </table>
+<h2>Disk Usage</h2>
+<ul id="diskUsage">
+    <!-- Disk usage details will be appended here -->
+</ul>
 
-    <!-- Memory Information -->
-    <h2>Memory Information</h2>
-    <ul>
-        <li>% Used: <%= memInfo.usedPercentage.toFixed(2) %> %</li>
-        <li>Used: <%= memInfo.used.toFixed(2) %> MB</li>
-        <li>Free: <%= memInfo.free.toFixed(2) %> MB</li>
-        <li>Total: <%= memInfo.total.toFixed(2) %> MB</li>
-    </ul>
+<h2>Memory Information</h2>
+<ul>
+    <li>Used: <span id="memUsed"></span> MB</li>
+    <li>Free: <span id="memFree"></span> MB</li>
+    <li>Total: <span id="memTotal"></span> MB</li>
+    <li>Usage Percentage: <span id="memUsedPercentage"></span>%</li>
+</ul>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    function fetchData() {
+        $.get('/data', function(data) {
+            // Update System Information
+            $('#hostname').text(data.systemInfo.hostname);
+            $('#os').text(data.systemInfo.os);
+            $('#kernelVersion').text(data.systemInfo.kernelVersion);
+            $('#uptime').text(data.systemInfo.uptime);
+
+            // Update Load Average
+            $('#loadAvg').text(data.loadAvg.toFixed(2));
+            $('#loadColor').text(data.loadColor);
+
+            // Update CPU Information
+            $('#cpuModel').text(data.cpu.model);
+            $('#cpuCores').text(data.cpu.cores);
+            $('#cpuSpeed').text(data.cpu.speed);
+
+            // Update Network Usage
+            $('#networkUsage').empty();
+            data.networkUsage.forEach(net => {
+                $('#networkUsage').append(`<li>${net.name}: ${net.ip}</li>`);
+            });
+
+            // Update Disk Usage
+            $('#diskUsage').empty();
+            data.diskUsage.forEach(disk => {
+                $('#diskUsage').append(`<li>${disk.filesystem} (Mounted on ${disk.mount}): ${disk.used} of ${disk.total} used (${disk.usePercentage})</li>`);
+            });
+
+            // Update Memory Information
+            $('#memUsed').text(data.memInfo.used.toFixed(2));
+            $('#memFree').text(data.memInfo.free.toFixed(2));
+            $('#memTotal').text(data.memInfo.total.toFixed(2));
+            $('#memUsedPercentage').text(data.memInfo.usedPercentage.toFixed(2));
+        });
+    }
+
+    // Fetch data immediately on page load and then every 5 seconds
+    fetchData();
+    setInterval(fetchData, 1000);
+</script>
+
+
+
+<script>
+$.get('/data', function(data) {
+    const loadAvgValue = data.loadAvg;
+    $('#loadAvg').text(loadAvgValue);
+
+    if (loadAvgValue <= 50) {
+        $('#loadAvg').css('color', 'green');
+    } else if (loadAvgValue <= 75) {
+        $('#loadAvg').css('color', 'orange');
+    } else {
+        $('#loadAvg').css('color', 'red');
+    }
+});
+
+</script>
+
 </body>
 </html>

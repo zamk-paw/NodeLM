@@ -4,14 +4,45 @@ const { exec } = require('child_process');
 
 const app = express();
 app.set('view engine', 'ejs');
+app.use(express.static('public')); // Serve static files from a 'public' directory
 
-app.get('/', async (req, res) => {
+function isPrivateIP(ip) {
+    const parts = ip.split('.').map(part => parseInt(part, 10));
+    if (parts[0] === 10) return true;
+    if (parts[0] === 192 && parts[1] === 168) return true;
+    if (parts[0] === 172 && (parts[1] >= 16 && parts[1] <= 31)) return true;
+    return false;
+}
+
+function formatUptime(uptime) {
+    const secondsInMinute = 60;
+    const secondsInHour = secondsInMinute * 60;
+    const secondsInDay = secondsInHour * 24;
+
+    const days = Math.floor(uptime / secondsInDay);
+    uptime %= secondsInDay;
+
+    const hours = Math.floor(uptime / secondsInHour);
+    uptime %= secondsInHour;
+
+    const minutes = Math.floor(uptime / secondsInMinute);
+
+    return `${days} days, ${hours} hours, ${minutes} minutes`;
+}
+
+async function main() {
+
+app.get('/', (req, res) => {
+    res.render('index'); 
+});
+
+app.get('/data', async (req, res) => {
     // System
     const systemInfo = {
         hostname: os.hostname(),
         os: os.type(),
         kernelVersion: os.release(),
-        uptime: os.uptime()
+        uptime: formatUptime(os.uptime())
     };
 
     // Load Average
@@ -27,20 +58,19 @@ app.get('/', async (req, res) => {
         model: cpuInfo.model,
         cores: os.cpus().length,
         speed: cpuInfo.speed,
-        temperature: await getTemperature()
     };
 
     // Network Usage
     const networkInterfaces = os.networkInterfaces();
-    const networkUsage = Object.keys(networkInterfaces).map(iface => {
-        const details = networkInterfaces[iface][0];
-        return {
-            name: iface,
-            ip: details.address,
-            receiveData: 'N/A',  // Placeholder, requires additional logic
-            transmitData: 'N/A'  // Placeholder, requires additional logic
-        };
-    });
+    const networkUsage = Object.keys(networkInterfaces)
+        .map(iface => {
+            const details = networkInterfaces[iface].find(detail => detail.family === 'IPv4');
+            return {
+                name: iface,
+                ip: details.address
+            };
+        })
+        .filter(net => !isPrivateIP(net.ip)); // Filter out private IP addresses using the isPrivateIP function
 
     // Disk Usage
     const diskUsage = await getDiskUsage();
@@ -56,7 +86,7 @@ app.get('/', async (req, res) => {
         total: totalMem
     };
 
-    res.render('index', {
+    res.json({
         systemInfo,
         loadAvg,
         loadColor,
@@ -67,24 +97,13 @@ app.get('/', async (req, res) => {
     });
 });
 
-app.listen(80, '0.0.0.0', () => {
-    console.log('Server started on http://0.0.0.0:80');
+app.listen(8888, '0.0.0.0', () => {
+    console.log('Server started on http://0.0.0.0:8888');
 });
 
-// Helper function to get CPU temperature using lm-sensors
-async function getTemperature() {
-    return new Promise((resolve, reject) => {
-        exec('sensors', (error, stdout, stderr) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-            const tempMatch = stdout.match(/temp1:\s+\+([\d.]+)/);
-            const temperature = tempMatch ? parseFloat(tempMatch[1]) : 'N/A';
-            resolve(temperature);
-        });
-    });
 }
+
+main();
 
 // Helper function to get Disk Usage using df
 async function getDiskUsage() {
@@ -97,6 +116,9 @@ async function getDiskUsage() {
             const lines = stdout.split('\n').slice(1);
             const disks = lines.map(line => {
                 const parts = line.split(/\s+/);
+                if (parts.length < 6) {
+                    return null; // Return null for lines that don't have the expected number of columns
+                }
                 return {
                     filesystem: parts[0],
                     total: parts[1],
@@ -105,6 +127,11 @@ async function getDiskUsage() {
                     usePercentage: parts[4],
                     mount: parts[5]
                 };
+            }).filter(disk => {
+                if (!disk) return false; // Filter out null values
+                // Filter out non-primary partitions
+                const nonPrimaryMounts = ['/dev', '/run', '/sys', '/proc', '/snap'];
+                return !nonPrimaryMounts.some(mount => disk.mount.startsWith(mount));
             });
             resolve(disks);
         });
